@@ -4,12 +4,39 @@ require 'csv'
 require 'pp'
 
 class Udacidata
+
+  # TODO: should be config
   FILE = File.dirname(__FILE__) + "/../data/data.csv"
 
+  #---
+  # constructor
+  #---
+  def initialize(opts={})
+    headers = self.class.headers
+    get_last_id
+    if opts[:id]
+      opts[:id] = opts[:id].to_i
+    else
+      opts[:id] = @@count_class_instances
+      auto_increment
+    end
+    @data = CSV::Row.new(headers, headers.map { |header| opts.fetch(header, nil) })
+    self.class.header_reader *headers
+  end
+
+  def update(opts={})
+    opts.each { |header, value| @data[header] = value }
+    self.class.save
+    self
+  end
+
+  #---
+  # class methods
+  #---
   def self.create(options = {})
     new(options).tap do |obj|
       CSV.open(FILE, 'ab') do |row|
-        row << CSV::Row.new(headers, headers.map{ |header| obj.send(header.to_sym) }) 
+        row << CSV::Row.new(headers, headers.map{ |header| obj.send(header) }) 
       end
     end
   end
@@ -28,7 +55,7 @@ class Udacidata
     CSV.open(FILE, 'wb', headers: true) do |row|
       row << headers
       @@all.each do |obj|
-        row << CSV::Row.new(headers, headers.map{ |header| obj.send(header.to_sym) }) 
+        row << CSV::Row.new(headers, headers.map{ |header| obj.send(header) }) 
       end
     end
   end
@@ -58,7 +85,7 @@ class Udacidata
   end
 
   def self.headers
-    @@headers ||= CSV.foreach(FILE).first
+    @@headers ||= CSV.foreach(FILE).first.map(&:to_sym)
   end
 
   def self.method_missing(method_sym, *arguments, &block)
@@ -66,7 +93,7 @@ class Udacidata
       self.headers.each do |header|
         class_eval %{
           def self.find_by_#{header}(value)
-            all.find { |obj| obj.#{header.to_sym} == value }
+            all.find { |obj| obj.#{header} == value }
           end
         }
       end
@@ -76,4 +103,26 @@ class Udacidata
     end
   end
 
+  private
+  # Reads the last line of the data file, and gets the id if one exists
+  # If it exists, increment and use this value
+  # Otherwise, use 0 as starting ID number
+  def get_last_id
+    file = File.dirname(__FILE__) + "/../data/data.csv"
+    last_id = File.exist?(file) ? CSV.read(file).last[0].to_i + 1 : nil
+    @@count_class_instances = last_id || 0
+  end
+
+  def auto_increment
+    @@count_class_instances += 1
+  end
+
+  private_class_method
+  def self.header_reader(*headers)
+    headers.each do |header|
+      define_method(header) do
+        @data[header]
+      end
+    end
+  end
 end
