@@ -94,14 +94,10 @@ class Udacidata
   end
 
   def self.method_missing(method_sym, *arguments, &block)
+    # lazy create find_by_* methods
+    # headers may not be available when this file is read and parsed
     if method_sym.to_s =~ /find_by_/
-      self.headers.each do |header|
-        class_eval %{
-          def self.find_by_#{header}(value)
-            all.find { |obj| obj.#{header} == value }
-          end
-        }
-      end
+      self.create_finder_methods *self.headers
       self.send(method_sym, *arguments)
     else
       super
