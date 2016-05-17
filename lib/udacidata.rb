@@ -61,7 +61,7 @@ class Udacidata
   end
 
   def self.all
-    @@all = CSV.foreach(FILE, headers: true, header_converters: :symbol).to_a.map do |row|
+    @@all = CSV.foreach(FILE, headers: true, header_converters: :symbol, converters: :all).to_a.map do |row|
       new(row.to_hash)
     end
   end
