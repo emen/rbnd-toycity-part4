@@ -30,6 +30,10 @@ class Udacidata
     self
   end
 
+  def to_s
+    @data.each.map { |header, value| "#{header}: #{value}"}.join(", ")
+  end
+
   #---
   # class methods
   #---
@@ -75,7 +79,8 @@ class Udacidata
   end
 
   def self.find(the_id)
-    all.find{ |obj| obj.id == the_id }
+    all.find{ |obj| obj.id == the_id } ||
+      raise(ProductNotFoundError, "Can't find product with id '#{the_id}'")
   end
 
   def self.where(options={})
